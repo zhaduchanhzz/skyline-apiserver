@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1
+
+# Build the API and the customized console into one Skyline image.
+ARG VENV_TAG=3.12-latest
+FROM ghcr.io/rackerlabs/genestack-images/openstack-venv:${VENV_TAG} AS dependency_build
+
+ARG OS_CONSTRAINTS=stable/2025.1
+ARG APISERVER_REPO=https://github.com/rackerlabs/skyline-apiserver.git
+ARG APISERVER_REF=c48c8f9f500b84b6fc5bdc7aa2dbda4ada73e43f
+ARG CONSOLE_REPO=https://github.com/zhaduchanhzz/skyline-console.git
+ARG CONSOLE_REF=02289634afe80453d8712c02d28568e0e16bddf8
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+      gcc make git wget curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 "${APISERVER_REPO}" /opt/skyline-apiserver \
+    && test "$(git -C /opt/skyline-apiserver rev-parse HEAD)" = "${APISERVER_REF}" \
+    && git clone --depth 1 "${CONSOLE_REPO}" /opt/skyline-console \
+    && test "$(git -C /opt/skyline-console rev-parse HEAD)" = "${CONSOLE_REF}" \
+    && test -s /opt/skyline-console/skyline_console/static/index.html \
+    && test -s /opt/skyline-console/skyline_console/static/main.js
+
+# The fork caps Pydantic at 1.10.0, which cannot import FastAPI routes on
+# current Python 3.12 (ForwardRef._evaluate requires recursive_guard).
+RUN sed -i 's/^pydantic<=1\.10\.0.*/pydantic==1.10.26/' \
+      /opt/skyline-apiserver/requirements.txt
+
+# skyline-nginx-generator imports skyline_console.static_path. Installing the
+# Python package keeps that path and its compiled assets together.
+RUN /var/lib/openstack/bin/pip install -U /opt/skyline-console \
+    && /var/lib/openstack/bin/pip install \
+      -r /opt/skyline-apiserver/requirements.txt \
+      -c "https://raw.githubusercontent.com/openstack/requirements/${OS_CONSTRAINTS}/upper-constraints.txt" \
+    && /var/lib/openstack/bin/pip install -U /opt/skyline-apiserver \
+      -c "https://raw.githubusercontent.com/openstack/requirements/${OS_CONSTRAINTS}/upper-constraints.txt" \
+    && /var/lib/openstack/bin/python -c \
+      "from skyline_console import static_path; from skyline_apiserver.main import app; assert (static_path / 'index.html').is_file(); assert (static_path / 'main.js').is_file(); assert app.title"
+
+FROM python:3.12-slim-bookworm
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y nginx \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 42424 skyline \
+    && useradd --system --gid 42424 --uid 42424 \
+      --shell /usr/sbin/nologin --create-home --home /var/lib/skyline skyline \
+    && mkdir -p /var/lib/openstack/etc/skyline /var/log/skyline \
+    && ln -s /var/lib/openstack/etc/skyline /etc/skyline
+
+COPY --from=dependency_build /var/lib/openstack /var/lib/openstack
+COPY --from=dependency_build /opt/skyline-apiserver /opt/skyline-apiserver
+COPY --from=dependency_build /opt/skyline-apiserver/etc/gunicorn.py /etc/skyline/gunicorn.py
+COPY container/start_sovereign.sh /usr/local/bin/start_sovereign.sh
+
+RUN chmod +x /usr/local/bin/start_sovereign.sh \
+    && chown -R skyline:skyline /var/lib/skyline /var/log/skyline /var/lib/openstack/etc/skyline \
+    && /var/lib/openstack/bin/python -c \
+      "from skyline_console import static_path; from skyline_apiserver.main import app; assert (static_path / 'index.html').is_file(); assert (static_path / 'main.js').is_file(); assert app.title"
+
+ENV PATH="/var/lib/openstack/bin:${PATH}"
+WORKDIR /opt/skyline-apiserver
+EXPOSE 9999
+
+ENTRYPOINT ["/usr/local/bin/start_sovereign.sh"]
