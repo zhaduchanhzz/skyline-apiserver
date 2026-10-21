@@ -1,5 +1,6 @@
 pbr>=5.8.0,<7.1.0 # Apache-2.0
 fastapi<=0.58.1 # MIT
+# Keep the Python 3.12-compatible Pydantic v1 release required by FastAPI 0.58.
 pydantic==1.10.26 # MIT
 uvicorn<=0.17.6 # BSD License (3 clause)
 gunicorn>=20.1.0 # MIT
