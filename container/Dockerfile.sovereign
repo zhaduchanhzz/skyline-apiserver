@@ -8,7 +8,7 @@ ARG OS_CONSTRAINTS=stable/2025.1
 ARG APISERVER_REPO=https://github.com/zhaduchanhzz/skyline-apiserver.git
 ARG APISERVER_REF=52e4a981751e2d561908871b4c996807cd5c557e
 ARG CONSOLE_REPO=https://github.com/zhaduchanhzz/skyline-console.git
-ARG CONSOLE_REF=4878b8da772bae05f78b3ac69dff798ead252191
+ARG CONSOLE_REF=4c7a630b2d0599ff6e26aec9924ea51dc433efa1
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
