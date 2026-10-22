@@ -5,6 +5,11 @@
 package. Its startup script generates the Skyline Nginx configuration, starts
 Nginx for the console and API proxy, then runs Gunicorn for the API.
 
+The console displays `mbfs-logo.svg` on the login page and in the navigation
+bar. The source asset is `src/asset/image/mbfs-logo.svg` in the console
+repository; the built image serves it from
+`skyline_console/static/asset/image/mbfs-logo.svg`.
+
 The upstream Dockerfile's `skyline-apiserver` entrypoint does not exist in this
 API package. The image uses `skyline-nginx-generator` and `gunicorn`, pins the
 OpenStack `stable/2025.1` constraints, and uses Pydantic 1.10.26 so the API
@@ -23,7 +28,8 @@ The Dockerfile pins the API and console revisions that were checked in this
 workspace. To build a newer pushed console revision, pass
 `--build-arg CONSOLE_REF=<commit>`; that revision must contain compiled files
 under `skyline_console/static`. After changing FE source, run `npm run build`
-and commit the resulting static files to the console repository first.
+(`npm run build:win` in PowerShell on Windows) and commit the resulting static
+files to the console repository first.
 
 The combined image needs a Skyline configuration file with reachable Keystone
 credentials. Bootstrap its database, then start the service. In PowerShell,
