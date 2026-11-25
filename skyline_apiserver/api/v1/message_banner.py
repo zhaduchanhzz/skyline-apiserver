@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 
 from fastapi import status
@@ -30,6 +31,15 @@ from skyline_apiserver.utils.roles import assert_system_admin
 router = APIRouter()
 RSS_FEED_SYNC_INTERVAL = 300
 _rss_feed_last_sync = 0.0
+
+
+def _rss_feed_enabled() -> bool:
+    return os.getenv("RACKSPACE_STATUS_BANNERS_ENABLED", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
 
 
 def _format_message_banner(message_banner) -> schemas.MessageBanner:
@@ -66,6 +76,9 @@ def _model_dump(model, exclude_unset: bool = False) -> dict:
 
 async def _sync_rss_feed(force: bool = False) -> None:
     global _rss_feed_last_sync
+
+    if not _rss_feed_enabled():
+        return
 
     now = time.time()
     if not force and now - _rss_feed_last_sync < RSS_FEED_SYNC_INTERVAL:
@@ -152,7 +165,10 @@ async def list_public_message_banners(
 
     await _sync_rss_feed()
     banner_region = region or CONF.openstack.default_region
-    banners = await db_api.list_active_message_banners(region=banner_region)
+    banners = await db_api.list_active_message_banners(
+        region=banner_region,
+        include_rss_feed=_rss_feed_enabled(),
+    )
     return _format_message_banners(banners)
 
 
@@ -173,6 +189,7 @@ async def list_active_message_banners(
     await _sync_rss_feed()
     banners = await db_api.list_active_message_banners(
         region=profile.region,
+        include_rss_feed=_rss_feed_enabled(),
     )
     return _format_message_banners(banners)
 
@@ -197,7 +214,10 @@ async def list_message_banners(
         exception="Not allowed to list message banners.",
     )
     await _sync_rss_feed()
-    banners = await db_api.list_message_banners(region=profile.region)
+    banners = await db_api.list_message_banners(
+        region=profile.region,
+        include_rss_feed=_rss_feed_enabled(),
+    )
     return _format_message_banners(banners)
 
 

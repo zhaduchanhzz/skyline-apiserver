@@ -34,6 +34,7 @@ def configure(project: str, setup: bool = True) -> None:
     if setup:
         CONF.setup(project, os.environ.copy())
         features.validate_features(CONF.config)
+        features.validate_kagent_chat(CONF.config)
 
 
 __all__ = ("CONF", "configure")

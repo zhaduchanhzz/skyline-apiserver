@@ -1,0 +1,20 @@
+services:
+  apiserver:
+    build:
+      context: .
+      dockerfile: container/Dockerfile.local
+    image: skyline-apiserver-local:dev
+    ports:
+      - "127.0.0.1:28000:28000"
+    volumes:
+      - ./:/app
+      - skyline-local-data:/var/lib/skyline
+    environment:
+      RACKSPACE_STATUS_BANNERS_ENABLED: "false"
+    command: >-
+      sh -c "alembic -c skyline_apiserver/db/alembic/alembic.ini upgrade head
+      && exec uvicorn skyline_apiserver.main:app --host 0.0.0.0 --port 28000 --reload --reload-dir skyline_apiserver"
+    restart: unless-stopped
+
+volumes:
+  skyline-local-data:

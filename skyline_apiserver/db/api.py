@@ -151,9 +151,12 @@ def _region_conditions(
 @check_db_connected
 async def list_message_banners(
     region: Optional[str] = None,
+    include_rss_feed: bool = True,
 ) -> Sequence[Any]:
     query = select(MessageBanners).order_by(MessageBanners.c.created_at.desc())
     conditions = _region_conditions(region=region)
+    if not include_rss_feed:
+        conditions.append(MessageBanners.c.source != "rss_feed")
     if conditions:
         query = query.where(*conditions)
     db = DB.get()
@@ -166,6 +169,7 @@ async def list_message_banners(
 @check_db_connected
 async def list_active_message_banners(
     region: Optional[str] = None,
+    include_rss_feed: bool = True,
 ) -> Sequence[Any]:
     now = datetime.now(timezone.utc)
     conditions = [
@@ -174,6 +178,8 @@ async def list_active_message_banners(
     ]
     if region:
         conditions.extend(_region_conditions(region=region))
+    if not include_rss_feed:
+        conditions.append(MessageBanners.c.source != "rss_feed")
     query = (
         select(MessageBanners)
         .where(*conditions)

@@ -98,3 +98,15 @@ setting:
 # UI visibility only. The console maps names to panels and applies defaults.
 # Example: features: {compute_images: false, storage_swift_cdn: false}
 features: {}
+
+# AI Assistant (kagent chat) in the console. Leave unset to hide it.
+# Sent to signed-in users by GET /api/v1/features; read at runtime, so a
+# restart of the API server is enough after a change. Never put tokens here.
+# kagent_chat:
+#   # kagent chat link of the agent, or the kagent base URL with namespace,
+#   # agent and ui_version. A path such as /kagent uses the same origin.
+#   url: https://kagent.example.com/agents/kagent/chat-agent/chat
+#   # namespace: kagent
+#   # agent: chat-agent
+#   # ui_version: v0          # v0 = kagent 0.x, v1 = kagent 1.x
+#   # allowed_roles: [admin]  # UI only; empty = every signed-in user
